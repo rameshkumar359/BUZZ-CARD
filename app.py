@@ -81,8 +81,6 @@ def image_preview(image, res):
         br = (int(br[0]), int(br[1]))
         bl = (int(bl[0]), int(bl[1]))
         cv2.rectangle(image, tl, br, (255, 0, 0), 2)
-        # cv2.putText(image, text, (tl[0], tl[1] - 10),
-        #                 cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
     plt.rcParams['figure.figsize'] = (15, 5)
     plt.axis('off')
     plt.imshow(image)
