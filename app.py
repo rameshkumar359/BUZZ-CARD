@@ -11,12 +11,14 @@ import numpy as np
 import os
 
 
+# storing the downloaded in cache to run it faster
 @st.cache_data
 def load_image():
     reader = easyocr.Reader(['en'], model_storage_directory=".")
     return reader
 
 
+# making connection with mysql server
 my_db = sql.connect(host='localhost',
                     user='root',
                     password='root',
@@ -24,7 +26,7 @@ my_db = sql.connect(host='localhost',
                     )
 mycursor = my_db.cursor(buffered=True)
 
-
+# setting the page tab
 icon = Image.open('apple-xxl.png')
 st.set_page_config(page_title="Extracting Business Card Data with OCR",
                    page_icon=icon,
@@ -34,7 +36,7 @@ st.set_page_config(page_title="Extracting Business Card Data with OCR",
 st.markdown("<h1 style='text-align: center; color: #051937;background-color:white;border-radius:15px;'>Extracting Business Card Data with OCR</h1>",
             unsafe_allow_html=True)
 
-
+# vertical navigation
 with st.sidebar:
     selected = option_menu(None, ["Extract", "Create", "Read", "Update", "Delete"],
                            icons=["tools", "bi bi-file-text-fill", "bi bi-book",
@@ -47,6 +49,8 @@ with st.sidebar:
                                    "container": {"max-width": "6000px"},
                                    "nav-link-selected": {"background-color": "#266c81"}, })
 
+# setting the back-ground color
+
 
 def back_ground():
     st.markdown(f""" <style>.stApp {{
@@ -57,12 +61,16 @@ def back_ground():
 
 back_ground()
 
+# conveting the image file to binary
+
 
 def img_to_binary(file):
     # Convert image data to binary format
     with open(file, 'rb') as file:
         binaryData = file.read()
     return binaryData
+
+# plotting extracted image using its dimensions
 
 
 def image_preview(image, res):
@@ -79,9 +87,12 @@ def image_preview(image, res):
     plt.axis('off')
     plt.imshow(image)
 
+# creating a class to extract the data
+
 
 class data_extract():
 
+    # finding the phone number in the text
     def find_phone_number(text):
 
         try:
@@ -97,6 +108,7 @@ class data_extract():
 
         return phone_num
 
+# regex for finding the email pattern in the text
     def finding_email(text):
         try:
             regex = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
@@ -107,6 +119,7 @@ class data_extract():
 
         return email
 
+# function to find the name
     def find_name(res1):
         try:
             name = res1[0]
@@ -127,6 +140,7 @@ class data_extract():
 
         return list
 
+# function to finding the designation
     def find_designation(res1):
         try:
             designation = res1[1]
@@ -135,6 +149,7 @@ class data_extract():
 
         return designation
 
+# function to find the link
     def find_link(text):
         try:
             org = []
@@ -154,6 +169,7 @@ class data_extract():
 
         return org
 
+# function to finding the pincode
     def finding_pincode(text):
         try:
             regex = r"[1-9][0-9]{5}"
@@ -164,6 +180,7 @@ class data_extract():
 
         return pin
 
+# function to find the state
     def state(text):
         state = ""
         try:
@@ -180,6 +197,8 @@ class data_extract():
             state = "NA"
             return state
 
+# function to find the city
+
     def city(text):
         try:
             city = ["erode,", "salem,", "chennai,",
@@ -195,6 +214,7 @@ class data_extract():
 
         return city_f
 
+# getting company information
     def company(text):
         try:
             text = text.split(" ")
@@ -205,6 +225,9 @@ class data_extract():
             company = ""
 
         return company
+
+
+# formatting the data in json format
 
 
 def data_formatted(text, res, im):
@@ -270,28 +293,32 @@ def create_table():
 
 create_table()
 
-
+# exract page
 if selected == "Extract":
+    # getting the image
     img_file = st.file_uploader("Upload the Card", type=["jpeg", "png"])
     if img_file is not None:
-        save_image_path = './images/' + img_file.name
-        with open(save_image_path, "wb") as f:
+        save_image_path = './images/' + img_file.name        # creating the path
+        with open(save_image_path, "wb") as f:               # writing it as binary format
             f.write(img_file.getbuffer())
         im_binary = img_to_binary(save_image_path)
-        st.image(save_image_path, use_column_width=True,
+        st.image(save_image_path, use_column_width=True,     # displaying the image
                  caption="Uploaded_Image")
         with st.spinner("please wait..."):
             st.set_option('deprecation.showPyplotGlobalUse', False)
+            # reading the image in cv2 to create boundaries over the text dimensions
             image = cv2.imread(save_image_path)
             render = load_image()
+            # extracting the text from the image
             res = render.readtext(save_image_path)
             st.markdown("")
-            st.pyplot(image_preview(image, res))
+            st.pyplot(image_preview(image, res))             # plotting the img
 
         st.markdown("")
         st.markdown("")
         st.markdown("")
 
+# uploading the extracted document into the database
         if st.button("EXTRACT TO DATABASE", type="primary",
                      disabled=False, use_container_width=True):
             box_to_array = convert_from_array_to_list(res)
@@ -307,6 +334,7 @@ if selected == "Extract":
             mycursor.execute(query, value)
             my_db.commit()
 
+# create page
 if selected == "Create":
 
     st.markdown(" ")
@@ -380,7 +408,7 @@ if selected == "Create":
             data['image'].append(values[9])
 
             return data
-
+        # inserting into the database
         dict = dict_format(value)
         st.success("uploaded to data base")
         query = """INSERT INTO bussiness_card.card_details (NAME,DESIGNATION,CONTACT,EMAIL,COMPANY,WEBSITE,CITY,STATE,PINCODE,IMAGE)
@@ -398,6 +426,7 @@ if selected == "Read":
 
     st.markdown("#### :red[BUSSINESS CARD DETAILS]")
 
+# reading the data from mysql
     def read_from_sql():
         query = ('SELECT NAME,DESIGNATION,CONTACT,EMAIL,COMPANY,WEBSITE,CITY,STATE,PINCODE FROM bussiness_card.card_details;')
         mycursor.execute(query)
@@ -409,7 +438,7 @@ if selected == "Read":
 
     read_from_sql()
 
-
+# update page
 if selected == "Update":
 
     st.markdown(" ")
